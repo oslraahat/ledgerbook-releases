@@ -1,7 +1,4 @@
 ## `LedgerBook Release Workflow Structure`
-# Android Release Workflow
-
-## Release Flow
 
 ```text
 Release Tag (v*)
