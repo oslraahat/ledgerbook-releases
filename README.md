@@ -1,6 +1,4 @@
-## ledgerbook-releases
-
-## Release Workflow Structure
+### LedgerBook Release Workflow Structure
 ```text
 Production Release Pipeline (10 Groups · 25 Steps)
 │
