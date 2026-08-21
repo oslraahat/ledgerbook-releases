@@ -1,10 +1,12 @@
 ## ledgerbook-releases
 
-Release :: Production Release Pipeline (10 Groups · 25 Steps)
+# Release Workflow Structure
+```text
+Production Release Pipeline (10 Groups · 25 Steps)
 │
 ├── 01. Source & Preflight
 │   ├── 01/25 - Checkout source code
-│   └── 02/25 - Preflight -- required secrets
+│   └── 02/25 - Preflight -- required secrets 
 │
 ├── 02. Release Validation
 │   ├── 03/25 - Validate release version
