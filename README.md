@@ -1,84 +1,122 @@
 ## `LedgerBook Release Workflow Structure`
 
 ```text
-Release Tag (v*)
+Version Tag (v*)
         │
         ▼
-┌─────────────────────────────────────┐
-│ Job 1 · Preflight & Validate        │
-├─────────────────────────────────────┤
-│ 01. Checkout source code            │
-│ 02. Validate required secrets       │
-│ 03. Validate release version        │
-│     ├─ Tag format                   │
-│     ├─ versionName == tag           │
-│     └─ versionCode monotonicity     │
-│ 04. Validate release notes          │
-│ 05. Resolve releases repository     │
-│ 06. Duplicate release check         │
-└──────────────────┬──────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────┐
-│ Job 2 · Quality Checks              │
-├─────────────────────────────────────┤
-│ 07. Setup Java 17                   │
-│ 08. Validate Gradle wrapper         │
-│ 09. Setup Gradle                    │
-│ 10. Prepare Gradle wrapper          │
-│ 11. Run Android Lint                │
-│ 12. Run unit tests                  │
-│ 13. Upload test/lint reports        │
-└──────────────────┬──────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────┐
-│ Job 3 · Build & Verify              │
-├─────────────────────────────────────┤
-│ 14. Restore signing keystore        │
-│     └─ Write keystore.properties    │
-│ 15. Build signed release APK        │
-│ 16. Verify APK exists               │
-│ 17. Verify APK signature            │
-│ 18. Verify signing certificate      │
-│     └─ SHA-256 fingerprint          │
-│ 19. Verify APK version metadata     │
-│     ├─ versionName                  │
-│     ├─ versionCode                  │
-│     └─ debuggable = false           │
-│ 20. Calculate APK SHA-256           │
-│ 21. Upload verified APK             │
-│ 22. Upload R8 mapping/symbols       │
-│ 23. Shred signing material          │
-└──────────────────┬──────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────┐
-│ Job 4 · Package                     │
-├─────────────────────────────────────┤
-│ 24. Archive R8 mapping & symbols    │
-│ 25. Package release artifact        │
-│     ├─ Rename APK                   │
-│     ├─ Generate .sha256             │
-│     ├─ Verify SHA-256               │
-│     └─ Compare build hash           │
-│ 26. Upload release artifact         │
-└──────────────────┬──────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────┐
-│ Job 5 · Publish                     │
-├─────────────────────────────────────┤
-│ 27. Publish release                 │
-│     └─ Public releases repository   │
-│ 28. Download published APK          │
-│ 29. Verify published APK exists     │
-│ 30. Verify published APK SHA-256    │
-│ 31. Write GitHub release summary    │
-└─────────────────────────────────────┘
-```
-
-Publish / Published APK Verification Failed
-      ↓
-RELEASE NOT CONFIRMED
+┌──────────────────────────────────────┐
+│ 1. Secrets                           │
+├──────────────────────────────────────┤
+│ • Validate required secrets          │
+│ • KEYSTORE_BASE64                    │
+│ • Store Password                     │
+│ • Key Alias                          │
+│ • Key Password                       │
+│ • Releases Repo Token                │
+└──────────────────────────────────────┘
+        │
+        ├─────────────────────────────────────────────┐
+        │                                             │
+        ▼                                             ▼
+┌──────────────────────────────┐       ┌──────────────────────────────┐
+│ 2. Version                   │       │ 3. Release Notes             │
+├──────────────────────────────┤       ├──────────────────────────────┤
+│ • Checkout source            │       │ • Checkout source             │
+│ • Validate tag format        │       │ • Find release-notes file     │
+│ • Validate versionName       │       │ • Validate file exists        │
+│ • Validate versionCode       │       │ • Validate file is not empty  │
+│ • Compare previous version   │       └──────────────────────────────┘
+│ • Detect pre-release         │
+│ • Validate default branch   │
+└──────────────────────────────┘
+        │
+        ├─────────────────────────────────────────────┐
+        │                                             │
+        ▼                                             ▼
+┌──────────────────────────────┐       ┌──────────────────────────────┐
+│ 4. Gradle Wrapper            │       │ 5. Releases Repository        │
+├──────────────────────────────┤       ├──────────────────────────────┤
+│ • Checkout source            │       │ • Depends on Secrets          │
+│ • Validate Gradle wrapper    │       │ • Checkout source              │
+│ • Verify wrapper integrity   │       │ • Resolve releases repository │
+└──────────────────────────────┘       │ • Validate repo configuration │
+        │                              │ • Check duplicate release      │
+        │                              └──────────────────────────────┘
+        │                                             │
+        └──────────────────────┬──────────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────────┐
+                    │   Pre-Build Validation   │
+                    │      Jobs 1–5 Passed     │
+                    └──────────────────────────┘
+                               │
+                  ┌────────────┴────────────┐
+                  │                         │
+                  ▼                         ▼
+       ┌──────────────────────┐  ┌──────────────────────┐
+       │ 6. Unit Tests        │  │ 7. Android Lint      │
+       ├──────────────────────┤  ├──────────────────────┤
+       │ • Checkout           │  │ • Checkout           │
+       │ • Setup Java 17      │  │ • Setup Java 17      │
+       │ • Setup Gradle       │  │ • Setup Gradle       │
+       │ • Run unit tests     │  │ • Setup signing      │
+       │ • Upload report      │  │ • Run lintRelease    │
+       │   on failure         │  │ • Upload report      │
+       └──────────────────────┘  │   on failure         │
+                  │               │ • Cleanup signing   │
+                  │               └──────────────────────┘
+                  │                         │
+                  └────────────┬────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────────┐
+                    │ 8. Signed APK Build      │
+                    ├──────────────────────────┤
+                    │ • Checkout source        │
+                    │ • Setup Java 17           │
+                    │ • Setup Gradle             │
+                    │ • Setup signing            │
+                    │ • assembleRelease          │
+                    │ • Validate APK exists      │
+                    │ • Calculate SHA-256        │
+                    │ • Upload APK artifact      │
+                    │ • Archive R8 mapping       │
+                    │ • Cleanup signing material│
+                    └──────────────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────────┐
+                    │ 9. APK Inspection         │
+                    ├──────────────────────────┤
+                    │ • Download APK            │
+                    │ • Verify SHA-256           │
+                    │ • Verify APK signature     │
+                    │ • Verify certificate       │
+                    │   fingerprint              │
+                    │ • Verify versionName       │
+                    │ • Verify versionCode       │
+                    │ • Verify package name      │
+                    │ • Verify not debuggable    │
+                    └──────────────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────────┐
+                    │ 10. Publish Release       │
+                    ├──────────────────────────┤
+                    │ • Checkout release notes  │
+                    │ • Download inspected APK  │
+                    │ • Rename APK               │
+                    │ • Generate SHA-256 file    │
+                    │ • Verify local hash        │
+                    │ • Compose release body    │
+                    │ • Add SHA-256 to notes     │
+                    │ • Create GitHub release    │
+                    │ • Download published APK  │
+                    │ • Verify published hash   │
+                    │ • Write run summary       │
+                    └──────────────────────────┘
+                               │
+                               ▼
+                         🚀 Published APK
 ```
